@@ -38,6 +38,8 @@ void OutputVehicleLineDetector( float* inputCloud,                              
     uint32_t triangle = 1;
     uint32_t rectangle = 2;
     uint32_t size = 256000;
+    float boundaryScore;
+
 
     // Initialize output arrays with NaN values
     std::fill(outputPlaneCloud, outputPlaneCloud + size * 3, std::numeric_limits<float>::quiet_NaN());
@@ -166,7 +168,7 @@ void OutputVehicleLineDetector( float* inputCloud,                              
 
     // ############################################################################
     // Step 10: adjust the corners points to create a rectangular boundary that encompasses the plane cloud
-    std::vector<Eigen::Vector3f> adjustedPcaCorner = readjustCornerPoints(pcaCorners, transformedCloud, rectangle);
+    std::vector<Eigen::Vector3f> adjustedPcaCorner = readjustCornerPoints(pcaCorners, transformedCloud, planeNormal, rectangle, boundaryScore, 0.1, 3.0, 3);
 
     // create a premade outline to vizualize
     pcl::PointCloud<pcl::PointXYZ>::Ptr adjustedPcaTriangle(new pcl::PointCloud<pcl::PointXYZ>);
@@ -264,7 +266,7 @@ void OutputVehicleLineDetector( float* inputCloud,                              
 
     // ############################################################################
     // Step 13: adjust triangle points to create a rectangular boundary that encompasses the plane cloud
-    std::vector<Eigen::Vector3f> adjustedPoints = readjustCornerPoints(correctedPoints, transformedCloud, triangle);
+    std::vector<Eigen::Vector3f> adjustedPoints = readjustCornerPoints(correctedPoints, transformedCloud, planeNormal, triangle, boundaryScore, 0.05, 0.01, 1);
 
     // create a premade outline to vizualize
     pcl::PointCloud<pcl::PointXYZ>::Ptr adjustedTriangle(new pcl::PointCloud<pcl::PointXYZ>);

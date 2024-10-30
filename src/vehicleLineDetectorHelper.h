@@ -203,12 +203,13 @@ Eigen::Vector3f findPlaneCoefficients(pcl::PointCloud<pcl::PointXYZ>::Ptr planeF
     }
 
     // Step 2: Extract the normal vector coefficients (a, b, c)
-    float a = coefficients->values[0];
+    float a = coefficients->values[0];      //direction of the plane’s normal vector
     float b = coefficients->values[1];
     float c = coefficients->values[2];
 
     // Return the plane normal as an Eigen::Vector3f
-    return Eigen::Vector3f(a, b, c);
+    Eigen::Vector3f normal(a, b, c);
+    return normal.normalized();  // Return normalized normal vector
 }
 
 // Function to find the corners of a known-dimension rectangular plane using PCA
@@ -520,39 +521,183 @@ std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f
     return { A, B, C };
 }
 
-// Function to adjust triangle points to create a rectangular boundary that encompasses the plane cloud
+
+// ############################################
+// Function to apply translation to align the rectangle center with the bounding box center
+std::vector<Eigen::Vector3f> applyTranslationToCorners(const std::vector<Eigen::Vector3f>& corners,
+                                                       const Eigen::Vector3f& targetCenter) {
+    // Calculate the current center of the rectangle
+    Eigen::Vector3f rectangleCenter = (corners[0] + corners[1] + corners[2] + corners[3]) / 4.0f;
+
+    // Calculate the translation offset
+    Eigen::Vector3f totalOffset = (targetCenter - rectangleCenter) * 0.5f;  // Adaptive scaling
+
+    // Apply translation to each corner
+    std::vector<Eigen::Vector3f> translatedCorners;
+    for (const auto& corner : corners) {
+        translatedCorners.push_back(corner + totalOffset);
+    }
+
+    return translatedCorners;
+}
+
+// Function to rotate rectangle corners in the local XY plane of a tilted input plane
+std::vector<Eigen::Vector3f> applyRotationToCorners(const std::vector<Eigen::Vector3f>& corners, 
+                                                    const Eigen::Vector3f& center, 
+                                                    const Eigen::Vector3f& planeNormal, 
+                                                    float angleDegrees) {
+    // Convert angle to radians
+    float radians = angleDegrees * M_PI / 180.0f;
+
+    // Step 1: Calculate the rotation needed to align the plane's normal to the global Z-axis
+    Eigen::Vector3f globalZ(0, 0, 1);
+    Eigen::Quaternionf alignToZ;
+    alignToZ.setFromTwoVectors(planeNormal, globalZ);
+    Eigen::Matrix3f alignToZMatrix = alignToZ.toRotationMatrix();
+
+    // Step 2: Rotate in the aligned (local) XY plane around the Z-axis
+    Eigen::Matrix3f yawRotation;
+    yawRotation << cos(radians), -sin(radians), 0,
+                   sin(radians),  cos(radians), 0,
+                   0,             0,            1;
+
+    // Step 3: Combine transformations: first align to Z, then rotate, then align back to original plane orientation
+    Eigen::Matrix3f alignBack = alignToZMatrix.transpose();  // inverse rotation
+    Eigen::Matrix3f totalTransformation = alignBack * yawRotation * alignToZMatrix;
+
+    // Step 4: Apply the total transformation to each corner point
+    std::vector<Eigen::Vector3f> rotatedCorners;
+    for (const auto& corner : corners) {
+        rotatedCorners.push_back(totalTransformation * (corner - center) + center);
+    }
+
+    return rotatedCorners;
+}
+
+// Function to calculate shortest distance from a point to a line segment
+float pointToLineDistance(const Eigen::Vector2f& point, const Eigen::Vector2f& lineStart, const Eigen::Vector2f& lineEnd) {
+    Eigen::Vector2f lineDir = lineEnd - lineStart;
+    float lineLengthSquared = lineDir.squaredNorm();
+    
+    if (lineLengthSquared == 0) return (point - lineStart).norm();  // Line is a single point
+
+    float t = std::max(0.0f, std::min(1.0f, (point - lineStart).dot(lineDir) / lineLengthSquared));
+    Eigen::Vector2f projection = lineStart + t * lineDir;
+    return (point - projection).norm();
+}
+
+bool isPointInsideRectangle(const Eigen::Vector2f& point, const std::vector<Eigen::Vector2f>& rectangleCorners) {
+
+    // Calculate the cross product for the first edge to set the reference sign
+    Eigen::Vector2f firstEdgeDir = rectangleCorners[1] - rectangleCorners[0];
+    Eigen::Vector2f firstPtDir = point - rectangleCorners[0];
+    float firstCrossProduct = firstEdgeDir.x() * firstPtDir.y() - firstEdgeDir.y() * firstPtDir.x();
+
+    // Determine the sign based on the first cross product (positive or negative)
+    bool isPositive = (firstCrossProduct > 0);
+
+    // Check all other edges
+    for (uint32_t i = 1; i < rectangleCorners.size(); ++i) {
+        Eigen::Vector2f edgeStart = rectangleCorners[i];
+        Eigen::Vector2f edgeEnd = rectangleCorners[(i + 1) % rectangleCorners.size()];
+        Eigen::Vector2f edgeDir = edgeEnd - edgeStart;
+        Eigen::Vector2f ptDir = point - edgeStart;
+
+        float crossProduct = edgeDir.x() * ptDir.y() - edgeDir.y() * ptDir.x();
+
+        // If the cross product sign doesn't match the first one, the point is outside
+        if ((crossProduct > 0) != isPositive) {
+            return false;
+        }
+    }
+    return true;
+}
+
+float calculateBoundaryScore(const pcl::PointCloud<pcl::PointXYZ>::Ptr& planeCloud,
+                             const std::vector<Eigen::Vector3f>& rectangleCorners,
+                             const Eigen::Vector3f& planeNormal) {
+    float score = 0.0f;
+
+    // Step 1: Calculate the rotation matrix to align the plane normal with the global Z-axis
+    Eigen::Vector3f globalZ(0.0f, 0.0f, 1.0f);
+    Eigen::Quaternionf rotation;
+    rotation.setFromTwoVectors(planeNormal, globalZ);
+    Eigen::Matrix3f rotationMatrix = rotation.toRotationMatrix();
+
+    // Step 2: Transform rectangle corners to the local coordinate system
+    std::vector<Eigen::Vector2f> rectangleCornersLocalXY;
+    for (const auto& corner : rectangleCorners) {
+        Eigen::Vector3f rotatedCorner = rotationMatrix * corner;
+        rectangleCornersLocalXY.emplace_back(rotatedCorner.x(), rotatedCorner.y());
+    }
+
+    // Step 3: Iterate through each point in planeCloud and transform it to the local coordinate system
+    #pragma omp parallel for reduction(+:score)  // Parallelize with reduction to sum scores across threads
+    for (int i = 0; i < planeCloud->points.size(); ++i) {
+        const auto& point = planeCloud->points[i];
+        Eigen::Vector3f pointVec(point.x, point.y, point.z);
+        Eigen::Vector3f rotatedPoint = rotationMatrix * pointVec;
+        Eigen::Vector2f ptLocalXY(rotatedPoint.x(), rotatedPoint.y());
+
+        // Step 4: Check if point is inside the rectangle in the local XY plane
+        if (isPointInsideRectangle(ptLocalXY, rectangleCornersLocalXY)) {
+            continue;  // Skip points inside the boundary, as they don’t contribute to the score
+        }
+
+        // Step 5: Calculate minimum distance to any edge for points outside
+        float minDistance = std::numeric_limits<float>::max();
+        for (uint32_t j = 0; j < rectangleCornersLocalXY.size(); ++j) {
+            const Eigen::Vector2f& edgeStart = rectangleCornersLocalXY[j];
+            const Eigen::Vector2f& edgeEnd = rectangleCornersLocalXY[(j + 1) % rectangleCornersLocalXY.size()];
+            float distance = pointToLineDistance(ptLocalXY, edgeStart, edgeEnd);
+            minDistance = std::min(minDistance, distance);  // Track minimum distance to any edge
+        }
+
+        // Step 6: Accumulate minimum distance for points outside the boundary
+        score += minDistance;
+    }
+    return score;  // Higher score indicates more points outside or farther from boundary
+}
+
 std::vector<Eigen::Vector3f> readjustCornerPoints(const std::vector<Eigen::Vector3f>& cornerPoints,
-                                                  pcl::PointCloud<pcl::PointXYZ>::Ptr planeCloud, 
-                                                  uint32_t type = 1) {
-    // Constants
+                                                  pcl::PointCloud<pcl::PointXYZ>::Ptr planeCloud,
+                                                  const Eigen::Vector3f& planeNormal, uint32_t type,
+                                                  float& boundaryScore, float angleStep, float angleTotal, int maxIterations) {
     constexpr uint32_t triangle = 1;
     constexpr uint32_t rectangle = 2;
     std::vector<Eigen::Vector3f> adjustedCornerPoints;
 
-    // Step 1: Define corners based on type
     if (type == triangle) {
-        // Calculate the fourth corner (D) to form a rectangle
         Eigen::Vector3f A = cornerPoints[0];
         Eigen::Vector3f B = cornerPoints[1];
         Eigen::Vector3f C = cornerPoints[2];
-        
-        Eigen::Vector3f AB = (B - A).normalized();
-        Eigen::Vector3f AC = (C - A).normalized();
-        Eigen::Vector3f AD = AB.cross(AC).cross(AB) * (C - B).norm();
+
+        // Calculate vectors AB and AC
+        Eigen::Vector3f AB = B - A;
+        Eigen::Vector3f AC = C - A;
+
+        // Calculate the vector BC for distance reference
+        Eigen::Vector3f BC = C - B;
+        float targetLength = BC.norm();  // Target length for AD to match BC
+
+        // Calculate the normal vector to the plane defined by AB and AC
+        Eigen::Vector3f normal = AB.cross(AC).normalized();
+
+        // Use the cross product to find a direction perpendicular to AB in the plane of ABC
+        Eigen::Vector3f AD_dir = normal.cross(AB).normalized();
+
+        // Scale AD_dir to have the same length as BC
+        Eigen::Vector3f AD = AD_dir * targetLength;
+
+        // Calculate point D by starting at A and adding the AD vector
         Eigen::Vector3f D = A + AD;
 
-        adjustedCornerPoints = {A, B, C, D}; // Rectangle from triangle points
-
+        adjustedCornerPoints = {A, B, C, D};
     } else if (type == rectangle) {
-        // Rectangle points directly provided
         adjustedCornerPoints = cornerPoints;
     }
 
-    // Step 2: Calculate the initial center of the rectangle
-    Eigen::Vector3f rectangleCenter = (adjustedCornerPoints[0] + adjustedCornerPoints[1] + 
-                                       adjustedCornerPoints[2] + adjustedCornerPoints[3]) / 4.0f;
-
-    // Step 3: Determine bounding box for planeCloud
+    // Determine bounding box center of planeCloud
     Eigen::Vector3f minPoint = planeCloud->points[0].getVector3fMap();
     Eigen::Vector3f maxPoint = planeCloud->points[0].getVector3fMap();
     for (const auto& point : planeCloud->points) {
@@ -561,15 +706,36 @@ std::vector<Eigen::Vector3f> readjustCornerPoints(const std::vector<Eigen::Vecto
         maxPoint = maxPoint.cwiseMax(pt);
     }
 
-    // Step 4: Calculate adaptive offset based on bounding box and rectangle center
     Eigen::Vector3f boundingBoxCenter = (minPoint + maxPoint) / 2.0f;
-    Eigen::Vector3f totalOffset = (boundingBoxCenter - rectangleCenter) * 0.5f;  // Adaptive scaling factor
+    std::vector<Eigen::Vector3f> bestadjustedCornerPoints = adjustedCornerPoints;
+    float initialScore = calculateBoundaryScore(planeCloud, bestadjustedCornerPoints, planeNormal);
+    float bestScore = std::numeric_limits<float>::max();
+    if (initialScore > 5.0){
+        bestadjustedCornerPoints = applyTranslationToCorners(bestadjustedCornerPoints, boundingBoxCenter);
+        for (int iter = 0; iter < maxIterations; ++iter) {
 
-    // Step 5: Apply offset to each corner and return adjusted points
-    for (auto& corner : adjustedCornerPoints) {
-        corner += totalOffset;
+            #pragma omp parallel for shared(bestScore, bestadjustedCornerPoints)
+            for (int i = 0; i < static_cast<int>(angleTotal / angleStep); ++i) {
+                float angle = i * angleStep;
+
+                // Apply both +angle and -angle rotations
+                for (float angleDirection : {angle, -angle}) {
+                    std::vector<Eigen::Vector3f> rotatedCorners = applyRotationToCorners(bestadjustedCornerPoints, boundingBoxCenter, planeNormal, angleDirection);
+                    float currentScore = calculateBoundaryScore(planeCloud, rotatedCorners, planeNormal);
+
+                    #pragma omp critical
+                    {
+                        if (currentScore < bestScore) {
+                            bestScore = currentScore;
+                            bestadjustedCornerPoints = rotatedCorners;
+                        }
+                    }
+                }
+            }
+
+            bestadjustedCornerPoints = applyTranslationToCorners(bestadjustedCornerPoints, boundingBoxCenter);
+        }
     }
-
-    return adjustedCornerPoints;
+    boundaryScore = bestScore;  // Set final boundary score
+    return bestadjustedCornerPoints;
 }
-
