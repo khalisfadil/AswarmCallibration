@@ -452,7 +452,7 @@ std::tuple<std::vector<Eigen::Vector3f>, float, int> findBestTriangle(const Eige
 }
 
 // Function to recorrect triangle based on ideal distances and angles
-std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f>& bestPoints,
+std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f>& bestPoints, int indexSource,
                                                 float idealAB, float idealBC, float idealCA,
                                                 float idealAngleABBC, float idealAngleBCCA, float idealAngleCAAB) {
     const float tolerance = 0.0001f;  // Tolerance for distance and angle correction
@@ -485,33 +485,35 @@ std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f
             break;  // Exit loop if all within tolerance
         }
 
-        // Adjust points to match ideal distances
-        if(std::abs(currentCA - idealCA) > tolerance){
-            Eigen::Vector3f directionAC = (C - A).normalized();
-            C = A + directionAC * idealCA;  // Adjust C along the line towards the ideal AC length
+        if (indexSource == 1){
+            // Adjust points to match ideal distances
+            if(std::abs(currentCA - idealCA) > tolerance){
+                Eigen::Vector3f directionAC = (C - A).normalized();
+                C = A + directionAC * idealCA;  // Adjust C along the line towards the ideal AC length
+            }
+            if(std::abs(currentBC - idealBC) > tolerance){
+                Eigen::Vector3f directionCB = (B - C).normalized();
+                B = C + directionCB * idealBC;  // Adjust B along the line towards the ideal CB length
+            }
+            if(std::abs(currentAB - idealAB) > tolerance){
+                Eigen::Vector3f directionBA = (A - B).normalized();
+                A = B + directionBA * idealAB;  // Adjust A along the line towards the ideal BA length
+            }
+        }else{
+             // Adjust points to match ideal distances
+            if (std::abs(currentCA - idealCA) > tolerance) {
+                Eigen::Vector3f directionCA = (A - C).normalized();
+                A = C + directionCA * idealCA;  // Adjust A along the line towards the ideal CA length
+            }
+            if (std::abs(currentAB - idealAB) > tolerance) {
+                Eigen::Vector3f directionAB = (B - A).normalized();
+                B = A + directionAB * idealAB;  // Adjust B along the line towards the ideal AB length
+            }
+            if (std::abs(currentBC - idealBC) > tolerance) {
+                Eigen::Vector3f directionBC = (C - B).normalized();
+                C = B + directionBC * idealBC;  // Adjust C along the line towards the ideal BC length
+            }
         }
-        if(std::abs(currentBC - idealBC) > tolerance){
-            Eigen::Vector3f directionCB = (B - C).normalized();
-            B = C + directionCB * idealBC;  // Adjust B along the line towards the ideal CB length
-        }
-        if(std::abs(currentAB - idealAB) > tolerance){
-            Eigen::Vector3f directionBA = (A - B).normalized();
-            A = B + directionBA * idealAB;  // Adjust A along the line towards the ideal BA length
-        }
-
-
-        // if (std::abs(currentAB - idealAB) > tolerance) {
-        //     Eigen::Vector3f directionAB = (B - A).normalized();
-        //     B = A + directionAB * idealAB;  // Adjust B along the line towards the ideal AB length
-        // }
-        // if (std::abs(currentBC - idealBC) > tolerance) {
-        //     Eigen::Vector3f directionBC = (C - B).normalized();
-        //     C = B + directionBC * idealBC;  // Adjust C along the line towards the ideal BC length
-        // }
-        // if (std::abs(currentCA - idealCA) > tolerance) {
-        //     Eigen::Vector3f directionCA = (A - C).normalized();
-        //     A = C + directionCA * idealCA;  // Adjust A along the line towards the ideal CA length
-        // }
     }
 
     // Return the corrected points

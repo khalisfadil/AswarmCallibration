@@ -235,7 +235,7 @@ void OutputVehicleLineDetector( float* inputCloud,                              
 
     // ############################################################################
     // Step 12: recorrect triangle based on ideal distances and angles
-    std::vector<Eigen::Vector3f> correctedPoints = recorrectTriangle(bestPoints,
+    std::vector<Eigen::Vector3f> correctedPoints = recorrectTriangle(bestPoints, indexSource,
                                                                     adjacentSide, oppositeSide, hypotenuse,
                                                                     adjacentAngle, vertexAngle, oppositeAngle);
 
