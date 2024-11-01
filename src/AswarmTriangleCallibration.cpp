@@ -15,23 +15,23 @@ void DeleteAswarmTriangleCallibration() {
 
 // Main function to match the detected point cloud with the premade outline
 void OutputAswarmTriangleCallibration( float* inputCloud,                              uint32_t numInputCloud,
-                                double leafSize,                                                                                                                                        //Downsampling Parameter
-                                double clusterTolerance,                        uint32_t minClusterSize,                    uint32_t maxClusterSize,                                    //Vehicle Clustering Parameter
-                                double radiusSearch,                            double curvatureThresholdPlane,             double curvatureThresholdCorner,                            //Feature Extraction Parameter
-                                double normalDistanceMin,                       double normalDistanceMax,                                                                               //Plane Limit Parameter
-                                double adjacentSide,                            double oppositeSide,                        double hypotenuse,                                          //Ideal Triangle Parameter
-                                double adjacentAngle,                           double oppositeAngle,                       double vertexAngle,                                         //Ideal Triangle Parameter
-                                double distanceTolerance,                       double angleTolerance,                      double searchRadius,                                        //Candidate Search Parameter
-                                float* outputPlaneCloud,                        uint32_t& numoutputPlaneCloud,
-                                float* outputPcaTriangle,                       uint32_t& numoutputPcaTriangle,
-                                float* outputAdjustedPcaTriangle,               uint32_t& numoutputAdjustedPcaTriangle,
-                                float* outputBestTriangle,                      uint32_t& numoutputBestTriangle,
-                                float* outputCorrectedTriangle,                 uint32_t& numoutputCorrectedTriangle,
-                                float* outputAdjustedTriangle,                  uint32_t& numoutputAdjustedTriangle,
-                                float* outputFinalTriangle,                     uint32_t& numoutputFinalTriangle,
-                                float* outputoriginTriangle,                    uint32_t& numoutputOriginTriangle,
-                                float* outputTranslation,                       float* outputEulerAngles, 
-                                float& fitnessScore) 
+                                        double leafSize,                                                                                                                                        //Downsampling Parameter
+                                        double clusterTolerance,                        uint32_t minClusterSize,                    uint32_t maxClusterSize,                                    //Vehicle Clustering Parameter
+                                        double radiusSearch,                            double curvatureThresholdPlane,             double curvatureThresholdCorner,                            //Feature Extraction Parameter
+                                        double normalDistanceMin,                       double normalDistanceMax,                                                                               //Plane Limit Parameter
+                                        double adjacentSide,                            double oppositeSide,                        double hypotenuse,                                          //Ideal Triangle Parameter
+                                        double adjacentAngle,                           double oppositeAngle,                       double vertexAngle,                                         //Ideal Triangle Parameter
+                                        double distanceTolerance,                       double angleTolerance,                      double searchRadius,                                        //Candidate Search Parameter
+                                        float* outputPlaneCloud,                        uint32_t& numoutputPlaneCloud,
+                                        float* outputPcaTriangle,                       uint32_t& numoutputPcaTriangle,
+                                        float* outputAdjustedPcaTriangle,               uint32_t& numoutputAdjustedPcaTriangle,
+                                        float* outputBestTriangle,                      uint32_t& numoutputBestTriangle,
+                                        float* outputCorrectedTriangle,                 uint32_t& numoutputCorrectedTriangle,
+                                        float* outputAdjustedTriangle,                  uint32_t& numoutputAdjustedTriangle,
+                                        float* outputFinalTriangle,                     uint32_t& numoutputFinalTriangle,
+                                        float* outputoriginTriangle,                    uint32_t& numoutputOriginTriangle,
+                                        float* outputTranslation,                       float* outputEulerAngles, 
+                                        float& fitnessScore) 
 {   
     // Initialized constant parameter
     float point_spacing = 0.1f;
@@ -39,7 +39,6 @@ void OutputAswarmTriangleCallibration( float* inputCloud,                       
     uint32_t rectangle = 2;
     uint32_t size = 256000;
     float boundaryScore;
-
 
     // Initialize output arrays with NaN values
     std::fill(outputPlaneCloud, outputPlaneCloud + size * 3, std::numeric_limits<float>::quiet_NaN());
