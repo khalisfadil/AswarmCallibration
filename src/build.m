@@ -3,7 +3,7 @@ directorySource = '';  % Path to the source files
 
 % Driver: Info Request Encode
 def = legacy_code('initialize');
-def.SFunctionName = 'Sfunction_AswarmTriangleCallibration';
+def.SFunctionName = 'SFunction_AswarmTriangleCallibration';
 def.StartFcnSpec  = 'void CreateAswarmTriangleCallibration()';
 def.OutputFcnSpec = ['void OutputAswarmTriangleCallibration(single u1[256000][3], uint32 u2,' ...  % Cloud Input
                      'double u3,' ...                                                       % Downsampling Parameter
