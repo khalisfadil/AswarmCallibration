@@ -3,9 +3,9 @@ directorySource = '';  % Path to the source files
 
 % Driver: Info Request Encode
 def = legacy_code('initialize');
-def.SFunctionName = 'SFunctionSLAMVehicleLineDetector';
-def.StartFcnSpec  = 'void CreateVehicleLineDetector()';
-def.OutputFcnSpec = ['void OutputVehicleLineDetector(single u1[256000][3], uint32 u2,' ...  % Cloud Input
+def.SFunctionName = 'Sfunction_AswarmTriangleCallibration';
+def.StartFcnSpec  = 'void CreateAswarmTriangleCallibration()';
+def.OutputFcnSpec = ['void OutputAswarmTriangleCallibration(single u1[256000][3], uint32 u2,' ...  % Cloud Input
                      'double u3,' ...                                                       % Downsampling Parameter
                      'double u4, uint32 u5, uint32 u6,' ...                                 % Vehicle Clustering Parameter
                      'double u7, double u8, double u9,' ...                                 % Feature Extraction Parameter
@@ -23,9 +23,9 @@ def.OutputFcnSpec = ['void OutputVehicleLineDetector(single u1[256000][3], uint3
                      'single y15[256000][3], uint32 y16,' ...                               % outputoriginTriangle
                      'single y17[3][1], single y18[3][1],' ...                              % output Transformation
                      'single y19)'];                                                        % output GICP fittness score
-def.TerminateFcnSpec = 'void DeleteVehicleLineDetector()';
-def.HeaderFiles   = {'vehicleLineDetector.h'};
-def.SourceFiles   = {'vehicleLineDetector.cpp'};
+def.TerminateFcnSpec = 'void DeleteAswarmTriangleCallibration()';
+def.HeaderFiles   = {'AswarmTriangleCallibration.h'};
+def.SourceFiles   = {'AswarmTriangleCallibration.cpp'};
 def.IncPaths      = {directorySource};   % Adding source directory to include path
 def.SrcPaths      = {directorySource};
 def.Options.language = 'C++';

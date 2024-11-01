@@ -5,8 +5,8 @@
 
 // Function declarations for initializing and cleaning up resources
 // These are the functions for resource management and vehicle line detection
-extern void CreateVehicleLineDetector();  // Function to initialize resources (if needed)
-extern void DeleteVehicleLineDetector();  // Function to clean up resources (if needed)
+extern void CreateAswarmTriangleCallibration();  // Function to initialize resources (if needed)
+extern void DeleteAswarmTriangleCallibration();  // Function to clean up resources (if needed)
 
 // Main function to perform vehicle line detection
 // Parameters:
@@ -21,7 +21,7 @@ extern void DeleteVehicleLineDetector();  // Function to clean up resources (if 
 // - numoutputVehicleLine: The number of points in the line features output.
 // - icp_uncertainty: A reference to a double to store the uncertainty from ICP alignment.
 
-extern void OutputVehicleLineDetector( float* inputCloud,                              uint32_t numInputCloud,
+extern void OutputAswarmTriangleCallibration( float* inputCloud,                              uint32_t numInputCloud,
                                         double leafSize,                                                                                                                                        //Downsampling Parameter
                                         double clusterTolerance,                        uint32_t minClusterSize,                    uint32_t maxClusterSize,                                    //Vehicle Clustering Parameter
                                         double radiusSearch,                            double curvatureThresholdPlane,             double curvatureThresholdCorner,                            //Feature Extraction Parameter

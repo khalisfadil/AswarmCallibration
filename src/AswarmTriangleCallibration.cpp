@@ -1,20 +1,20 @@
-#include "vehicleLineDetectorHelper.h"
-#include "vehicleLineDetector.h"
+#include "AswarmTriangleCallibrationHelper.h"
+#include "AswarmTriangleCallibration.h"
 // static std::deque<Eigen::Matrix<float,6,1>> transformation_memory;
 // static const int memory_size = 5;
 
 // Initialize resources
-void CreateVehicleLineDetector() {
+void CreateAswarmTriangleCallibration() {
     // Additional resources can be initialized here if needed
 }
 
 // Clean up resources
-void DeleteVehicleLineDetector() {
+void DeleteAswarmTriangleCallibration() {
     // Clean up resources here if needed
 }
 
 // Main function to match the detected point cloud with the premade outline
-void OutputVehicleLineDetector( float* inputCloud,                              uint32_t numInputCloud,
+void OutputAswarmTriangleCallibration( float* inputCloud,                              uint32_t numInputCloud,
                                 double leafSize,                                                                                                                                        //Downsampling Parameter
                                 double clusterTolerance,                        uint32_t minClusterSize,                    uint32_t maxClusterSize,                                    //Vehicle Clustering Parameter
                                 double radiusSearch,                            double curvatureThresholdPlane,             double curvatureThresholdCorner,                            //Feature Extraction Parameter
@@ -339,18 +339,6 @@ void OutputVehicleLineDetector( float* inputCloud,                              
         }
         numoutputOriginTriangle = static_cast<uint32_t>(originTriangleSize);
     }
-
-
-    // ############################################################################
-    // Step 16: use ScanMatching to get the best triangle transformation
-    // pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> gicp;
-    // gicp.setInputSource(adjustedTriangle);  
-    // gicp.setInputTarget(originTriangle);      
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr finalTriangle(new pcl::PointCloud<pcl::PointXYZ>);
-    // gicp.align(*finalTriangle);  
-    // Eigen::Matrix4f final_transformation = gicp.getFinalTransformation(); 
-    // fitnessScore = gicp.getFitnessScore();
-
 
     float threshold = 0.001f;  // Fitness score threshold
     int maxIterations = 50;    // Maximum number of iterations
