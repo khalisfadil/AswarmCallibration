@@ -146,9 +146,21 @@ void OutputAswarmTriangleCallibration( float* inputCloud,                       
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcaTriangle(new pcl::PointCloud<pcl::PointXYZ>);
 
     // Generate and combine the points for each edge of the rectangle
-    *pcaTriangle += *interpolatePoints(pcaCorners[0], pcaCorners[1], point_spacing); // [0] top left, [1] bottom left
-    *pcaTriangle += *interpolatePoints(pcaCorners[1], pcaCorners[2], point_spacing); // [2] bottom right 
+    *pcaTriangle += *interpolatePoints(pcaCorners[0], pcaCorners[1], point_spacing); 
+    *pcaTriangle += *interpolatePoints(pcaCorners[1], pcaCorners[2], point_spacing); 
     *pcaTriangle += *interpolatePoints(pcaCorners[2], pcaCorners[0], point_spacing);
+
+    *pcaTriangle += *interpolatePoints(pcaCorners[3], pcaCorners[2], point_spacing); 
+    *pcaTriangle += *interpolatePoints(pcaCorners[2], pcaCorners[1], point_spacing);  
+    *pcaTriangle += *interpolatePoints(pcaCorners[1], pcaCorners[3], point_spacing);
+
+    *pcaTriangle += *interpolatePoints(pcaCorners[1], pcaCorners[0], point_spacing); 
+    *pcaTriangle += *interpolatePoints(pcaCorners[0], pcaCorners[3], point_spacing);  
+    *pcaTriangle += *interpolatePoints(pcaCorners[3], pcaCorners[1], point_spacing);
+
+    *pcaTriangle += *interpolatePoints(pcaCorners[2], pcaCorners[3], point_spacing); 
+    *pcaTriangle += *interpolatePoints(pcaCorners[3], pcaCorners[0], point_spacing); 
+    *pcaTriangle += *interpolatePoints(pcaCorners[0], pcaCorners[2], point_spacing);
 
     if (pcaTriangle->empty()) {
         std::cout << "pcaTriangle are empty. Exiting processing." << std::endl;
@@ -176,6 +188,18 @@ void OutputAswarmTriangleCallibration( float* inputCloud,                       
     *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[0], adjustedPcaCorner[1], point_spacing);
     *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[1], adjustedPcaCorner[2], point_spacing);
     *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[2], adjustedPcaCorner[0], point_spacing);
+
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[3], adjustedPcaCorner[2], point_spacing);
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[2], adjustedPcaCorner[1], point_spacing);
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[1], adjustedPcaCorner[3], point_spacing);
+
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[1], adjustedPcaCorner[0], point_spacing); 
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[0], adjustedPcaCorner[3], point_spacing);  
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[3], adjustedPcaCorner[1], point_spacing);
+
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[2], adjustedPcaCorner[3], point_spacing); 
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[3], adjustedPcaCorner[0], point_spacing); 
+    *adjustedPcaTriangle += *interpolatePoints(adjustedPcaCorner[0], adjustedPcaCorner[2], point_spacing);
 
     if (adjustedPcaTriangle->empty()) {
         std::cout << "adjustedPcaTriangle are empty. Exiting processing." << std::endl;
@@ -318,9 +342,19 @@ void OutputAswarmTriangleCallibration( float* inputCloud,                       
         *originTriangle += *interpolatePoints(corners[2], corners[0], point_spacing);
     } else if (indexSource == 2) {
         // If indexSource is 2, interpolate between corners[0] and corners[3]
-        *originTriangle += *interpolatePoints(corners[0], corners[3], point_spacing);
-        *originTriangle += *interpolatePoints(corners[3], corners[2], point_spacing);
-        *originTriangle += *interpolatePoints(corners[2], corners[0], point_spacing);
+        *originTriangle += *interpolatePoints(corners[1], corners[2], point_spacing);
+        *originTriangle += *interpolatePoints(corners[2], corners[3], point_spacing);
+        *originTriangle += *interpolatePoints(corners[3], corners[1], point_spacing);
+    } else if (indexSource == 3) {
+        // If indexSource is 2, interpolate between corners[0] and corners[3]
+        *originTriangle += *interpolatePoints(corners[2], corners[3], point_spacing);
+        *originTriangle += *interpolatePoints(corners[3], corners[0], point_spacing);
+        *originTriangle += *interpolatePoints(corners[0], corners[2], point_spacing);
+    } else if (indexSource == 4) {
+        // If indexSource is 2, interpolate between corners[0] and corners[3]
+        *originTriangle += *interpolatePoints(corners[3], corners[0], point_spacing);
+        *originTriangle += *interpolatePoints(corners[0], corners[1], point_spacing);
+        *originTriangle += *interpolatePoints(corners[1], corners[3], point_spacing);
     }
     
 

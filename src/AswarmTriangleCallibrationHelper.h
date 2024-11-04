@@ -376,51 +376,104 @@ std::tuple<std::vector<Eigen::Vector3f>, float, int> findBestTriangle(const Eige
                                                                         float adjacentSide, float oppositeSide, float hypotenuse,
                                                                         float adjacentAngle, float vertexAngle, float oppositeAngle) {
     float bestScore = std::numeric_limits<float>::max();
-    Eigen::Vector3f bestA, bestB, bestC;
-    int bestBIndexSource = -1;  // -1 indicates no source identified
+    Eigen::Vector3f best0, best1, best2;
+    int bestIndexSource = -1;  
 
     // Step 1: Build the KdTree
     pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
     kdtree.setInputCloud(candidatePointsCloud);
 
-    // Step 2: Find candidate points for pointA, pointB, and pointC
+    // Step 2: Find candidate points
     std::vector<Eigen::Vector3f> candidatesA = findCandidatePoints(originA, candidatePointsCloud, kdtree, searchRadius);
-    std::vector<Eigen::Vector3f> candidatesB1 = findCandidatePoints(originB, candidatePointsCloud, kdtree, searchRadius);
+    std::vector<Eigen::Vector3f> candidatesB = findCandidatePoints(originB, candidatePointsCloud, kdtree, searchRadius);
     std::vector<Eigen::Vector3f> candidatesC = findCandidatePoints(originC, candidatePointsCloud, kdtree, searchRadius);
-    std::vector<Eigen::Vector3f> candidatesB2 = findCandidatePoints(originD, candidatePointsCloud, kdtree, searchRadius);
+    std::vector<Eigen::Vector3f> candidatesD = findCandidatePoints(originD, candidatePointsCloud, kdtree, searchRadius);
 
-    // Combine candidatesB1 and candidatesB2 into candidatesB, tracking the source for each point
-    std::vector<Eigen::Vector3f> candidatesB = candidatesB1;
-    std::vector<int> sourceIndexB(candidatesB1.size(), 1);  // 1 for candidatesB1
-
-    candidatesB.insert(candidatesB.end(), candidatesB2.begin(), candidatesB2.end());
-    sourceIndexB.insert(sourceIndexB.end(), candidatesB2.size(), 2);  // 2 for candidatesB2
-
-    // Step 3: Evaluate triangles with OpenMP parallelization
     #pragma omp parallel
     {
         float localBestScore = std::numeric_limits<float>::max();
-        Eigen::Vector3f localBestA, localBestB, localBestC;
-        int localBestBIndexSource = -1;
+        Eigen::Vector3f localBest0, localBest1, localBest2;
+        int localBestIndexSource = -1;
 
+        // CandidateB as middle point
         #pragma omp for
         for (uint32_t i = 0; i < candidatesB.size(); ++i) {
             const auto& candidateB = candidatesB[i];
-            int currentBIndexSource = sourceIndexB[i];
-
             for (const auto& candidateA : candidatesA) {
                 for (const auto& candidateC : candidatesC) {
                     float score = calculateTriangleScore(candidateA, candidateB, candidateC, 
-                                                            distTolerance, angleTolerance,
-                                                            adjacentSide, oppositeSide, hypotenuse, //float idealAB, float idealBC, float idealCA,
-                                                            adjacentAngle, vertexAngle, oppositeAngle); // float idealAngleABBC, float idealAngleBCCA, float idealAngleCAAB
-
+                                                         distTolerance, angleTolerance,
+                                                         adjacentSide, oppositeSide, hypotenuse, 
+                                                         adjacentAngle, vertexAngle, oppositeAngle);
                     if (score < localBestScore) {
                         localBestScore = score;
-                        localBestA = candidateA;
-                        localBestB = candidateB;
-                        localBestC = candidateC;
-                        localBestBIndexSource = currentBIndexSource;
+                        localBest0 = candidateA;
+                        localBest1 = candidateB;
+                        localBest2 = candidateC;
+                        localBestIndexSource = 1;
+                    }
+                }
+            }
+        }
+
+        // CandidateC as middle point
+        #pragma omp for
+        for (uint32_t i = 0; i < candidatesC.size(); ++i) {
+            const auto& candidateC = candidatesC[i];
+            for (const auto& candidateB : candidatesB) {
+                for (const auto& candidateD : candidatesD) {
+                    float score = calculateTriangleScore(candidateB, candidateC, candidateD, 
+                                                         distTolerance, angleTolerance,
+                                                         adjacentSide, oppositeSide, hypotenuse,
+                                                         adjacentAngle, vertexAngle, oppositeAngle);
+                    if (score < localBestScore) {
+                        localBestScore = score;
+                        localBest0 = candidateB;
+                        localBest1 = candidateC;
+                        localBest2 = candidateD;
+                        localBestIndexSource = 2;
+                    }
+                }
+            }
+        }
+
+        // CandidateD as middle point
+        #pragma omp for
+        for (uint32_t i = 0; i < candidatesD.size(); ++i) {
+            const auto& candidateD = candidatesD[i];
+            for (const auto& candidateC : candidatesC) {
+                for (const auto& candidateA : candidatesA) {
+                    float score = calculateTriangleScore(candidateC, candidateD, candidateA, 
+                                                         distTolerance, angleTolerance,
+                                                         adjacentSide, oppositeSide, hypotenuse, 
+                                                         adjacentAngle, vertexAngle, oppositeAngle);
+                    if (score < localBestScore) {
+                        localBestScore = score;
+                        localBest0 = candidateC;
+                        localBest1 = candidateD;
+                        localBest2 = candidateA;
+                        localBestIndexSource = 3;
+                    }
+                }
+            }
+        }
+
+        // CandidateA as middle point
+        #pragma omp for
+        for (uint32_t i = 0; i < candidatesA.size(); ++i) {
+            const auto& candidateA = candidatesA[i];
+            for (const auto& candidateD : candidatesD) {
+                for (const auto& candidateB : candidatesB) {
+                    float score = calculateTriangleScore(candidateD, candidateA, candidateB, 
+                                                         distTolerance, angleTolerance,
+                                                         adjacentSide, oppositeSide, hypotenuse,
+                                                         adjacentAngle, vertexAngle, oppositeAngle);
+                    if (score < localBestScore) {
+                        localBestScore = score;
+                        localBest0 = candidateD;
+                        localBest1 = candidateA;
+                        localBest2 = candidateB;
+                        localBestIndexSource = 4;
                     }
                 }
             }
@@ -430,41 +483,39 @@ std::tuple<std::vector<Eigen::Vector3f>, float, int> findBestTriangle(const Eige
         {
             if (localBestScore < bestScore) {
                 bestScore = localBestScore;
-                bestA = localBestA;
-                bestB = localBestB;
-                bestC = localBestC;
-                bestBIndexSource = localBestBIndexSource;
+                best0 = localBest0;
+                best1 = localBest1;
+                best2 = localBest2;
+                bestIndexSource = localBestIndexSource;
             }
         }
     }
 
-    float dAB = calculateDistance(bestA, bestB);
-    float dBC = calculateDistance(bestB, bestC);
-    std::vector<Eigen::Vector3f> bestABC;
-
-    if (dAB >= dBC){
-        bestABC = { bestA, bestB, bestC };
-
-    }else{
-        bestABC = { bestC, bestB, bestA };
-    }
-
-    return std::make_tuple(bestABC, bestScore, bestBIndexSource);
+    std::vector<Eigen::Vector3f> best012 = { best0, best1, best2 };
+    return std::make_tuple(best012, bestScore, bestIndexSource);
 }
 
+
 // Function to recorrect triangle based on ideal distances and angles
-std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f>& bestPoints, int indexSource,
-                                                float idealAB, float idealBC, float idealCA,
-                                                float idealAngleABBC, float idealAngleBCCA, float idealAngleCAAB) {
+std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f>& bestPoints, int sourceIndex,
+                                                float idealAdjacentSide, float idealOppositeSide, float idealHypotenuse,
+                                                float idealAngleASOS, float idealAngleOSH, float idealAngleHAS) {
     const float tolerance = 0.0001f;  // Tolerance for distance and angle correction
+    Eigen::Vector3f A,B,C;
 
     // Initialize corrected points with the current best points
-    Eigen::Vector3f A = bestPoints[0];
-    Eigen::Vector3f B = bestPoints[1];
-    Eigen::Vector3f C = bestPoints[2];
+    if (sourceIndex == 1 || sourceIndex == 3){
+        A = bestPoints[0];
+        B = bestPoints[1];
+        C = bestPoints[2];
+    }else if (sourceIndex == 2 || sourceIndex == 4) {
+        A = bestPoints[2];
+        B = bestPoints[1];
+        C = bestPoints[0];
+    }
 
     // Iteratively adjust until within tolerance
-    int maxIterations = 100;
+    int maxIterations = 5;
     for (int iter = 0; iter < maxIterations; ++iter) {
         // Calculate current distances
         float currentAB = calculateDistance(A, B);
@@ -477,44 +528,29 @@ std::vector<Eigen::Vector3f> recorrectTriangle(const std::vector<Eigen::Vector3f
         float currentAngleCAAB = calculateAngle(A - C, B - A);
 
         // Check if all distances and angles are within tolerance
-        if (std::abs(currentAB - idealAB) < tolerance &&
-            std::abs(currentBC - idealBC) < tolerance &&
-            std::abs(currentCA - idealCA) < tolerance &&
-            std::abs(currentAngleABBC - idealAngleABBC) < tolerance &&
-            std::abs(currentAngleBCCA - idealAngleBCCA) < tolerance &&
-            std::abs(currentAngleCAAB - idealAngleCAAB) < tolerance) {
+        if (std::abs(currentAB - idealAdjacentSide) < tolerance &&
+            std::abs(currentBC - idealOppositeSide) < tolerance &&
+            std::abs(currentCA - idealHypotenuse) < tolerance &&
+            std::abs(currentAngleABBC - idealAngleASOS) < tolerance &&
+            std::abs(currentAngleBCCA - idealAngleOSH) < tolerance &&
+            std::abs(currentAngleCAAB - idealAngleHAS) < tolerance) {
             break;  // Exit loop if all within tolerance
         }
-
-        if (indexSource == 1){
-            // Adjust points to match ideal distances
-            if(std::abs(currentCA - idealCA) > tolerance){
-                Eigen::Vector3f directionAC = (C - A).normalized();
-                C = A + directionAC * idealCA;  // Adjust C along the line towards the ideal AC length
-            }
-            if(std::abs(currentBC - idealBC) > tolerance){
-                Eigen::Vector3f directionCB = (B - C).normalized();
-                B = C + directionCB * idealBC;  // Adjust B along the line towards the ideal CB length
-            }
-            if(std::abs(currentAB - idealAB) > tolerance){
-                Eigen::Vector3f directionBA = (A - B).normalized();
-                A = B + directionBA * idealAB;  // Adjust A along the line towards the ideal BA length
-            }
-        }else{
-             // Adjust points to match ideal distances
-            if (std::abs(currentCA - idealCA) > tolerance) {
-                Eigen::Vector3f directionCA = (A - C).normalized();
-                A = C + directionCA * idealCA;  // Adjust A along the line towards the ideal CA length
-            }
-            if (std::abs(currentAB - idealAB) > tolerance) {
-                Eigen::Vector3f directionAB = (B - A).normalized();
-                B = A + directionAB * idealAB;  // Adjust B along the line towards the ideal AB length
-            }
-            if (std::abs(currentBC - idealBC) > tolerance) {
-                Eigen::Vector3f directionBC = (C - B).normalized();
-                C = B + directionBC * idealBC;  // Adjust C along the line towards the ideal BC length
-            }
+        
+        // Adjust points to match ideal distances
+        if(std::abs(currentCA - idealHypotenuse) > tolerance){
+            Eigen::Vector3f directionAC = (C - A).normalized();
+            C = A + directionAC * idealHypotenuse;  // Adjust C along the line towards the ideal AC length
         }
+        if(std::abs(currentBC - idealOppositeSide) > tolerance){
+            Eigen::Vector3f directionCB = (B - C).normalized();
+            B = C + directionCB * idealOppositeSide;  // Adjust B along the line towards the ideal CB length
+        }
+        if(std::abs(currentAB - idealAdjacentSide) > tolerance){
+            Eigen::Vector3f directionBA = (A - B).normalized();
+            A = B + directionBA * idealAdjacentSide;  // Adjust A along the line towards the ideal BA length
+        }
+
     }
 
     // Return the corrected points
