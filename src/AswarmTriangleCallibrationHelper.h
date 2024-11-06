@@ -23,9 +23,6 @@
 #pragma once
 
 #include <cstdint>
-// #include <cstddef>
-// #include <cstdlib>  // For rand() and srand()
-// #include <ctime>    // For time()
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -51,7 +48,7 @@
 #include <pcl/filters/passthrough.h>
 
 #include <omp.h>
-#include <cmath>  // For std::sqrt
+#include <cmath>  
 #include <limits>
 #include <iostream>
 #include <random>

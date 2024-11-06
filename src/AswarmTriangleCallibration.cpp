@@ -22,8 +22,6 @@
 
 #include "AswarmTriangleCallibrationHelper.h"
 #include "AswarmTriangleCallibration.h"
-// static std::deque<Eigen::Matrix<float,6,1>> transformation_memory;
-// static const int memory_size = 5;
 
 // Initialize resources
 void CreateAswarmTriangleCallibration() {
